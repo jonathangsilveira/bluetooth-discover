@@ -4,5 +4,5 @@ import android.bluetooth.BluetoothDevice
 
 data class DiscoveryViewState(
     var inProgress: Boolean = false,
-    var devices: MutableList<BluetoothDevice> = mutableListOf()
+    var devices: List<BluetoothDevice>? = null
 )

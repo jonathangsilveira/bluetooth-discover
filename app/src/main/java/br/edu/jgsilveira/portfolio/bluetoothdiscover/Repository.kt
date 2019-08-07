@@ -19,18 +19,26 @@ class Repository(private val application: Application): BluetoothReceiver.Callba
 
     private val receiver = BluetoothReceiver(this)
 
+    private val state = MutableLiveData<BluetoothScanningState>(BluetoothScanningState.Initial)
+
+    val discoveryState: LiveData<BluetoothScanningState>
+        get() = state
+
     override fun onDiscoverStarted() {
+        state.value = BluetoothScanningState.InProgress
     }
 
     override fun onDiscoverFinished() {
+        state.value = BluetoothScanningState.Concluded(avaliableDevices)
         application.unregisterReceiver(receiver)
     }
 
     override fun onDeviceFound(device: BluetoothDevice) {
-
+        avaliableDevices.add(device)
     }
 
     fun start() {
+        avaliableDevices.clear()
         application.registerReceiver(receiver, filter)
         BluetoothAdapter.getDefaultAdapter()?.startDiscovery()
     }
@@ -38,5 +46,7 @@ class Repository(private val application: Application): BluetoothReceiver.Callba
     fun cancel() {
         BluetoothAdapter.getDefaultAdapter()?.cancelDiscovery()
     }
+
+    fun bondedDevices() = BluetoothAdapter.getDefaultAdapter()?.bondedDevices
 
 }

@@ -7,9 +7,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-class DeviceAdapter: RecyclerView.Adapter<DeviceAdapter.DeviceViewHolder>() {
-
-    private val devices: MutableList<BluetoothDevice> = mutableListOf()
+class DeviceAdapter(val devices: List<BluetoothDevice>): RecyclerView.Adapter<DeviceAdapter.DeviceViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DeviceViewHolder {
         val view = LayoutInflater.from(parent.context).inflate(android.R.layout.simple_list_item_1, parent, false)
@@ -20,11 +18,6 @@ class DeviceAdapter: RecyclerView.Adapter<DeviceAdapter.DeviceViewHolder>() {
 
     override fun onBindViewHolder(holder: DeviceViewHolder, position: Int) {
         holder.bind(devices[position])
-    }
-
-    fun add(device: BluetoothDevice) {
-        devices.add(device)
-        notifyItemInserted(devices.size - 1)
     }
 
     inner class DeviceViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {

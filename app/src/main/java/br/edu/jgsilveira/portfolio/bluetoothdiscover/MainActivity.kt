@@ -7,15 +7,16 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.util.Log
 import android.view.View
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProviders
 import kotlinx.android.synthetic.main.activity_main.*
 
 class MainActivity : AppCompatActivity() {
 
-    private var deviceAdapter: DeviceAdapter? = null
+    private lateinit var viewModel: BluetoothViewModel
 
     private val receiver = object : BroadcastReceiver() {
 
@@ -39,16 +40,17 @@ class MainActivity : AppCompatActivity() {
         // object and its info from the Intent.
         val device: BluetoothDevice =
             intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
-        Log.d("dente azul", device.name)
-        deviceAdapter?.add(device)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        deviceAdapter = DeviceAdapter()
-        foundDevices.adapter = deviceAdapter
-        if (isBtDisabled())
+        viewModel = ViewModelProviders.of(this).get(BluetoothViewModel::class.java)
+        viewModel.discoveryViewState.observe(this, discoveryStateObserver())
+        discoverButton.setOnClickListener {
+            viewModel.discover()
+        }
+        /*if (isBtDisabled())
             requestEnable()
         else {
             val filter = IntentFilter().apply {
@@ -58,8 +60,16 @@ class MainActivity : AppCompatActivity() {
             }
             registerReceiver(receiver, filter)
             discover()
-        }
+        }*/
     }
+
+    private fun discoveryStateObserver(): Observer<DiscoveryViewState> =
+        Observer {
+            if (it != null) {
+                progressContainer.visibility = if (it.inProgress) View.VISIBLE else View.GONE
+                foundDevices.adapter = DeviceAdapter(it.devices ?: listOf())
+            }
+        }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
