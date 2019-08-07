@@ -1,8 +1,6 @@
 package br.edu.jgsilveira.portfolio.bluetoothdiscover
 
-import android.bluetooth.BluetoothDevice
-
 data class DiscoveryViewState(
     var inProgress: Boolean = false,
-    var devices: List<BluetoothDevice>? = null
+    var devices: List<Device>? = null
 )

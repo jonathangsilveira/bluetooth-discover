@@ -30,4 +30,6 @@ class BluetoothViewModel(application: Application) : AndroidViewModel(applicatio
 
     fun cancel() = repo.cancel()
 
+    fun shouldEnableBluetooth() = !repo.isBluetoothEnabled()
+
 }
