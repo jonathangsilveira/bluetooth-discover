@@ -3,58 +3,87 @@ package br.edu.jgsilveira.portfolio.bluetoothdiscover
 import android.app.Application
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothManager
-import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanResult
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
 import android.content.IntentFilter
-import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import java.util.*
 
-class Repository(private val application: Application) : BluetoothReceiver.Callback {
+class Repository(private val application: Application) {
+
+    private val receiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                BluetoothDevice.ACTION_FOUND -> onDeviceFound(intent)
+                BluetoothDevice.ACTION_BOND_STATE_CHANGED -> onDeviceStateChanged(intent)
+                BluetoothAdapter.ACTION_DISCOVERY_STARTED -> onDiscoveryStarted(intent)
+                BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> onDiscoveryFinished(intent)
+                BluetoothAdapter.ACTION_STATE_CHANGED -> onConnectionStateChanged(intent)
+            }
+        }
+    }
 
     private val avaliableDevices = mutableMapOf<String, Device>()
 
     private val filter = IntentFilter().apply {
+        addAction(BluetoothDevice.ACTION_FOUND)
+        addAction(BluetoothDevice.ACTION_BOND_STATE_CHANGED)
         addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED)
         addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED)
-        addAction(BluetoothDevice.ACTION_FOUND)
+        addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
     }
 
-    private val receiver = BluetoothReceiver(this)
-
-    private val state = MutableLiveData<BluetoothScanningState>(BluetoothScanningState.Initial)
-
-    val discoveryState: LiveData<BluetoothScanningState>
-        get() = state
-
-    override fun onDiscoverStarted() {
-        state.value = BluetoothScanningState.InProgress
+    private val connectionState: MutableLiveData<ConnectionState> by lazy {
+        val adapter = BluetoothAdapter.getDefaultAdapter()
+        val state = if (adapter.enable())
+            ConnectionState.ON
+        else
+            ConnectionState.OFF
+        MutableLiveData(state)
     }
 
-    override fun onDiscoverFinished() {
-        state.value = BluetoothScanningState.Concluded(avaliableDevices.values.toList())
-        application.unregisterReceiver(receiver)
+    private fun onDeviceFound(intent: Intent) {
+        val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE)
+        if (avaliableDevices.containsKey(device.address))
+            avaliableDevices[device.address]?.updateState(device)
+        else
+            avaliableDevices[device.address] = Device.createFromBluetooth(device)
     }
 
-    override fun onDeviceFound(device: BluetoothDevice) {
-        avaliableDevices[device.address] = Device(device.address, device.name)
+    private fun onDeviceStateChanged(intent: Intent) {
+
+    }
+
+    private fun onDiscoveryStarted(intent: Intent) {
+
+    }
+
+    private fun onDiscoveryFinished(intent: Intent) {
+
+    }
+
+    private fun onConnectionStateChanged(intent: Intent) {
+
     }
 
     fun start() {
-        avaliableDevices.clear()
         application.registerReceiver(receiver, filter)
-        BluetoothAdapter.getDefaultAdapter()?.startDiscovery()
     }
 
-    fun cancel() {
-        BluetoothAdapter.getDefaultAdapter()?.cancelDiscovery()
+    fun finish() {
+        application.unregisterReceiver(receiver)
     }
 
-    fun bondedDevices() = BluetoothAdapter.getDefaultAdapter()?.bondedDevices
-
-    fun isBluetoothEnabled(): Boolean = BluetoothAdapter.getDefaultAdapter()?.isEnabled ?: false
+    fun connectOrDisconnect(turnOn: Boolean): LiveData<ConnectionState> {
+        val adapter = BluetoothAdapter.getDefaultAdapter()
+        if (turnOn && adapter.isEnabled)
+            connectionState
+        if (turnOn)
+            adapter.enable()
+        else
+            adapter.enable()
+        return connectionState
+    }
 
 }
