@@ -12,7 +12,7 @@ import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.Observer
-import androidx.lifecycle.ViewModelProviders
+import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.android.synthetic.main.activity_main.*
@@ -21,11 +21,14 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var viewModel: BluetoothViewModel
 
+    private var adapter: DeviceAdapter? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        viewModel = ViewModelProviders.of(this).get(BluetoothViewModel::class.java)
-        viewModel.discoveryViewState.observe(this, discoveryStateObserver())
+        viewModel = ViewModelProvider(this).get(BluetoothViewModel::class.java)
+        viewModel.discoveryState.observe(this, discoveryStateObserver())
+        viewModel.deviceState.observe(this, Observer { adapter?.updateState(state = it) })
         discoverButton.setOnClickListener {
             viewModel.discover()
         }
@@ -33,15 +36,17 @@ class MainActivity : AppCompatActivity() {
         if (requiresPermissionsAtRuntime() && isPermissionDenied(Manifest.permission.ACCESS_COARSE_LOCATION))
             requestPermissions(arrayOf(Manifest.permission.ACCESS_COARSE_LOCATION), REQUEST_LOCATION_PERMISSION)
         else
-            if (viewModel.shouldEnableBluetooth())
-                requestEnable()
+            requestEnable()
     }
 
     private fun discoveryStateObserver(): Observer<DiscoveryViewState> =
         Observer {
             if (it != null) {
                 progressContainer.visibility = if (it.inProgress) View.VISIBLE else View.GONE
-                avaliableDevices.adapter = DeviceAdapter(it.devices ?: listOf())
+                adapter = DeviceAdapter(it.devices ?: listOf()).apply {
+                    setOnClickListener { address -> viewModel.pair(address = address) }
+                }
+                avaliableDevices.adapter = adapter
             }
         }
 
@@ -54,8 +59,7 @@ class MainActivity : AppCompatActivity() {
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (grantResults[0] == PackageManager.PERMISSION_GRANTED)
-            if (viewModel.shouldEnableBluetooth())
-                requestEnable()
+            requestEnable()
     }
 
     private fun requestEnable() {

@@ -2,34 +2,58 @@ package br.edu.jgsilveira.portfolio.bluetoothdiscover
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Transformations
 
 class BluetoothViewModel(application: Application) : AndroidViewModel(application) {
 
-    private val repo = Repository(application)
+    private val repo = BluetoothRepository(application)
 
     private val state = DiscoveryViewState()
 
-    val discoveryViewState = Transformations.map(repo.discoveryState) {
-        when (it) {
-            is BluetoothScanningState.Initial -> state
-            is BluetoothScanningState.InProgress -> state.apply { inProgress = true }
-            is BluetoothScanningState.Concluded -> state.apply {
-                inProgress = false
-                devices = it.devices
+    private val device: MutableLiveData<String> = MutableLiveData()
+
+    private val connectionOnOff: MutableLiveData<Boolean> = MutableLiveData()
+
+    private val discoverTrigger = MutableLiveData(true)
+
+    val deviceState = Transformations.switchMap(device) { repo.pair(address = it) }
+
+    val connectionState = Transformations.switchMap(connectionOnOff) {
+        repo.connectOrDisconnect(turnOn = it)
+    }
+
+    val discoveryState = Transformations.switchMap(discoverTrigger) {
+        Transformations.map(repo.discovery()) { state ->
+            when (state) {
+                is DiscoveryState.Started -> this.state.apply { inProgress = true }
+                is DiscoveryState.Finished -> this.state.apply {
+                    inProgress = false
+                    devices = state.devices
+                }
             }
         }
     }
 
+    init {
+        repo.start()
+    }
+
     override fun onCleared() {
-        repo.cancel()
+        repo.finish()
         super.onCleared()
     }
 
-    fun discover() = repo.start()
+    fun onConnectionStateChanged(turnOn: Boolean) {
+        connectionOnOff.value = turnOn
+    }
 
-    fun cancel() = repo.cancel()
+    fun pair(address: String) {
+        device.value = address
+    }
 
-    fun shouldEnableBluetooth() = !repo.isBluetoothEnabled()
+    fun discover() {
+        discoverTrigger.value = true
+    }
 
 }

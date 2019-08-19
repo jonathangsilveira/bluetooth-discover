@@ -5,14 +5,14 @@ import android.bluetooth.BluetoothDevice
 data class Device(
     var address: String,
     var name: String?,
-    var state: DeviceState = DeviceState.UNBONDED
+    var state: BondState = BondState.NONE
 ) {
 
     fun updateState(device: BluetoothDevice) {
         state = when (device.bondState) {
-            BluetoothDevice.BOND_BONDING -> DeviceState.BONDING
-            BluetoothDevice.BOND_BONDED -> DeviceState.BONDED
-            else -> DeviceState.UNBONDED
+            BluetoothDevice.BOND_BONDING -> BondState.BONDING
+            BluetoothDevice.BOND_BONDED -> BondState.BONDED
+            else -> BondState.NONE
         }
     }
 
@@ -24,3 +24,7 @@ data class Device(
     }
 
 }
+
+data class DeviceState(val address: String, val state: BondState)
+
+enum class BondState { BONDED, BONDING, NONE }
